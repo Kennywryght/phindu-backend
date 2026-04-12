@@ -2,6 +2,8 @@ from sqlalchemy import Column, String, Float, ForeignKey, DateTime
 from app.db.session import Base
 import uuid
 from datetime import datetime
+from sqlalchemy.orm import relationship
+
 
 class Sale(Base):
     __tablename__ = "sales"
@@ -24,3 +26,5 @@ class SaleItem(Base):
     total_price = Column(Float)
     
     cost_price = Column(Float)
+    
+product = relationship("Product")

@@ -1,7 +1,6 @@
 """Product Pydantic schemas."""
 
 from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -27,6 +26,7 @@ class ProductOut(BaseModel):
     selling_price: float
     purchase_price: float
     stock_qty: float
+    archived: bool = False
 
     class Config:
         from_attributes = True

@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.db.models.stock import StockBatch
+from app.db.session import get_db
+from app.db.models.product import Product
+from app.db.models.sale import Sale
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -31,3 +34,15 @@ def get_sell_speed(db: Session = Depends(get_db)):
             })
 
     return results
+
+@router.get("/insights")
+def insights(db: Session = Depends(get_db)):
+
+    total_products = db.query(Product).count()
+    total_sales = db.query(Sale).count()
+
+    return {
+        "message": "Insights ready",
+        "total_products": total_products,
+        "total_sales": total_sales
+    }

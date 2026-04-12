@@ -23,9 +23,9 @@ def get_db():
     finally:
         db.close()
 
+
 @router.post("/", response_model=ProductOut)
 def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-
     new_product = Product(
         name=product.name,
         category=product.category,
@@ -41,21 +41,20 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_product)
 
-    # 🔥 CREATE STOCK BATCH
     batch = StockBatch(
         product_id=new_product.id,
         quantity_added=new_product.stock_qty,
         date_added=datetime.utcnow()
     )
-
     db.add(batch)
     db.commit()
 
     return new_product
 
+
 @router.get("/", response_model=list[ProductOut])
 def get_products(db: Session = Depends(get_db)):
-    """Return all active products currently stored in the database."""
+    """Return all products (including archived, excluding soft-deleted)."""
     return db.query(Product).filter(
         Product.is_deleted.is_(False)
     ).all()
@@ -69,23 +68,17 @@ def delete_product(product_id: str, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # 🔥 Check if product has sales
-    sale_exists = db.query(SaleItem)\
-        .filter(SaleItem.product_id == product_id)\
-        .first()
+    sale_exists = db.query(SaleItem).filter(SaleItem.product_id == product_id).first()
 
     if sale_exists:
-        # 🟢 SOFT DELETE
         product.is_deleted = True
         db.commit()
-
         return {"message": "Product soft-deleted (used in sales)"}
 
-    # 🔴 HARD DELETE
     db.delete(product)
     db.commit()
-
     return {"message": "Product permanently deleted"}
+
 
 @router.put("/{product_id}", response_model=ProductOut)
 def update_product(
@@ -99,7 +92,6 @@ def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # 🔥 Update only provided fields
     update_data = product_update.dict(exclude_unset=True)
 
     if "selling_price" in update_data:
@@ -110,24 +102,18 @@ def update_product(
         )
         db.add(history)
 
-    # 🔥 HANDLE STOCK SEPARATELY
     if "stock_qty" in update_data:
         new_stock = update_data["stock_qty"]
-
         if new_stock > product.stock_qty:
             added_qty = new_stock - product.stock_qty
-
             batch = StockBatch(
                 product_id=product.id,
                 quantity_added=added_qty,
                 date_added=datetime.utcnow()
             )
-
             db.add(batch)
-
         product.stock_qty = new_stock
 
-    # 🔥 UPDATE OTHER FIELDS
     for field, value in update_data.items():
         if field != "stock_qty":
             setattr(product, field, value)
@@ -137,32 +123,34 @@ def update_product(
 
     return product
 
+
 @router.put("/restore/{product_id}")
 def restore_product(product_id: str, db: Session = Depends(get_db)):
     """Restore a soft-deleted product."""
     product = db.query(Product).filter(Product.id == product_id).first()
-
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
     product.is_deleted = False
     db.commit()
-
     return {"message": "Product restored"}
+
 
 @router.put("/archive/{product_id}")
 def archive_product(product_id: str, db: Session = Depends(get_db)):
     """Archive a product so it is hidden from normal listings."""
     product = db.query(Product).filter(Product.id == product_id).first()
-
-    # product.is_archived = True
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.archived = True
     db.commit()
-
     return {"message": "Product archived"}
+
 
 @router.put("/unarchive/{product_id}")
 def unarchive_product(product_id: str, db: Session = Depends(get_db)):
-
     product = db.query(Product).filter(Product.id == product_id).first()
-
-    # product.is_archived = False
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.archived = False
     db.commit()
-
     return {"message": "Product unarchived"}

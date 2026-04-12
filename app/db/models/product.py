@@ -1,7 +1,6 @@
 """Product database model."""
 
 import uuid
-
 from sqlalchemy import Column, String, Float, ForeignKey, Boolean
 from app.db.session import Base
 
@@ -25,6 +24,6 @@ class Product(Base):
 
     parent_id = Column(String, ForeignKey("products.id"), nullable=True)
     is_deleted = Column(Boolean, default=False)
-    # is_archived = Column(Boolean, default=False)
+    archived = Column(Boolean, default=False)
 
     low_stock_threshold = Column(Float, default=5)
