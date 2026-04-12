@@ -15,7 +15,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://phindu-app.netlify.app/"
+        "https://phindu-app.netlify.app"
         ],
     allow_credentials=True,
     allow_methods=["*"],
