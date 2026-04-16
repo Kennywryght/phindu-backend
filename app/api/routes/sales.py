@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models.product import Product
 from app.db.models.sale import Sale, SaleItem
 from app.db.models.stock import StockBatch
+from app.db.models.session import Session as SessionModel  # <-- Added import
 from app.db.session import get_db
 from app.schemas.sale import SaleCreate, SaleResponse, BulkSaleCreate
 from app.utils.conversion import to_kg
@@ -21,13 +22,15 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
     """Create a new sale with items, update stock, and calculate totals."""
 
     new_sale = Sale(id=str(uuid.uuid4()), total_amount=0)
+
+    # Get active session and link if present
+    active_session = db.query(SessionModel).filter(SessionModel.is_active == True).first()
+    if active_session:
+        new_sale.session_id = active_session.id
+
     db.add(new_sale)
 
     total_amount = 0
-    # Get active session
-    active_session = db.query(Session).filter(Session.is_active == True).first()
-    if active_session:
-        new_sale.session_id = active_session.id
 
     for item in sale.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
@@ -88,11 +91,8 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
 @router.post("/bulk")
 def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db)):
     """Quick bulk sales for POS (no detailed breakdown)."""
-    # Get active session
-    active_session = db.query(Session).filter(Session.is_active == True).first()
-    if active_session:
-        new_sale.session_id = active_session.id
-        
+    active_session = db.query(SessionModel).filter(SessionModel.is_active == True).first()
+
     for item in data.items:
         product = db.query(Product).filter(Product.id == item.id).first()
         if not product:
@@ -102,7 +102,8 @@ def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db)):
 
         sale = Sale(
             id=str(uuid.uuid4()),
-            total_amount=product.selling_price * item.qty
+            total_amount=product.selling_price * item.qty,
+            session_id=active_session.id if active_session else None  # <-- Set session_id
         )
         db.add(sale)
         product.stock_qty -= item.qty
