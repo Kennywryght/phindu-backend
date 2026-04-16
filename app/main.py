@@ -9,8 +9,9 @@ from app.api.routes import analytics
 from app.api.routes import dashboard
 from app.api.routes import expenses
 from app.api.routes import alerts
-from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import sessions
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
 app.add_middleware(

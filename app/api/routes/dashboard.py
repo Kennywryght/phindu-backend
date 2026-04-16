@@ -39,7 +39,7 @@ def get_dashboard(
             product_sales[item.product_id] = 0
         product_sales[item.product_id] += item.quantity
 
-    profit = total_revenue - total_cost
+    profit = total_revenue - total_cost-total_expenses
     top_products = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:5]
     best_product = max(product_sales, key=product_sales.get) if product_sales else None
     worst_product = min(product_sales, key=product_sales.get) if product_sales else None
