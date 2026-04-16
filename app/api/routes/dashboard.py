@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db.session import get_db
 from app.db.models.sale import SaleItem
+from app.db.models.expense import Expense
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/")
 def get_dashboard(db: Session = Depends(get_db)):
+    # Get all sale items
     items = db.query(SaleItem).all()
+    
     total_revenue = 0
     total_cost = 0
     total_quantity = 0
@@ -28,6 +32,9 @@ def get_dashboard(db: Session = Depends(get_db)):
     avg_sale_value = total_revenue / total_quantity if total_quantity else 0
     profit_margin = (profit / total_revenue * 100) if total_revenue else 0
 
+    # Calculate total expenses
+    total_expenses = db.query(func.sum(Expense.amount)).scalar() or 0.0
+
     return {
         "total_revenue": total_revenue,
         "total_cost": total_cost,
@@ -37,5 +44,6 @@ def get_dashboard(db: Session = Depends(get_db)):
         "best_product": best_product,
         "worst_product": worst_product,
         "avg_sale_value": avg_sale_value,
-        "profit_margin": profit_margin
+        "profit_margin": profit_margin,
+        "total_expenses": total_expenses
     }
