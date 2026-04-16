@@ -1,18 +1,18 @@
 """Product Pydantic schemas."""
 
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProductCreate(BaseModel):
     """Schema for creating a new product."""
     name: str
     category: Optional[str] = None
-    type: str  # "variant" or "bulk"
-    unit: str  # "kg", "g", "piece"
-    selling_price: float
-    purchase_price: float
-    stock_qty: float
+    type: str = Field(..., description="\"variant\" or \"bulk\"")
+    unit: str = Field(..., description="\"kg\", \"g\", \"piece\"")
+    selling_price: float = Field(..., gt=0, description="Selling price must be greater than 0")
+    purchase_price: float = Field(..., gt=0, description="Purchase price must be greater than 0")
+    stock_qty: float = Field(..., ge=0, description="Stock quantity must be a non-negative number")
     parent_id: Optional[str] = None
 
 

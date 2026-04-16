@@ -26,3 +26,7 @@ def create_expense(name: str, amount: float, category: str, db: Session = Depend
     db.commit()
 
     return {"message": "Expense added"}
+@router.get("/")
+
+def get_expenses(db: Session = Depends(get_db)):
+    return db.query(Expense).order_by(Expense.created_at.desc()).all()

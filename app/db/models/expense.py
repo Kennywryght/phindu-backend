@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, DateTime
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey
 from app.db.session import Base
 import uuid
 from datetime import datetime
@@ -11,3 +11,4 @@ class Expense(Base):
     amount = Column(Float)
     category = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    session_id = Column(String, ForeignKey("sessions.id"), nullable=True)

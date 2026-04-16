@@ -24,6 +24,10 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
     db.add(new_sale)
 
     total_amount = 0
+    # Get active session
+    active_session = db.query(Session).filter(Session.is_active == True).first()
+    if active_session:
+        new_sale.session_id = active_session.id
 
     for item in sale.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
@@ -84,6 +88,11 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
 @router.post("/bulk")
 def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db)):
     """Quick bulk sales for POS (no detailed breakdown)."""
+    # Get active session
+    active_session = db.query(Session).filter(Session.is_active == True).first()
+    if active_session:
+        new_sale.session_id = active_session.id
+        
     for item in data.items:
         product = db.query(Product).filter(Product.id == item.id).first()
         if not product:
@@ -104,5 +113,19 @@ def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db)):
 
 @router.get("/")
 def get_sales(db: Session = Depends(get_db)):
-    """Fetch all sales."""
-    return db.query(Sale).all()
+    sales = db.query(Sale).order_by(Sale.created_at.desc()).all()
+    result = []
+    for sale in sales:
+        items = db.query(SaleItem).filter(SaleItem.sale_id == sale.id).all()
+        product_names = []
+        for item in items:
+            product = db.query(Product).filter(Product.id == item.product_id).first()
+            if product:
+                product_names.append(product.name)
+        result.append({
+            "id": sale.id,
+            "total_amount": sale.total_amount,
+            "created_at": sale.created_at,
+            "products": product_names
+        })
+    return result

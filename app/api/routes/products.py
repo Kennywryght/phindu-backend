@@ -53,11 +53,15 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[ProductOut])
-def get_products(db: Session = Depends(get_db)):
-    """Return all products (including archived, excluding soft-deleted)."""
-    return db.query(Product).filter(
-        Product.is_deleted.is_(False)
-    ).all()
+def get_products(
+    include_deleted: bool = False,
+    db: Session = Depends(get_db)
+    ):
+    query = db.query(Product)
+    if not include_deleted:
+        query = query.filter(Product.is_deleted == False)
+    return query.all()
+
 
 
 @router.delete("/{product_id}")
