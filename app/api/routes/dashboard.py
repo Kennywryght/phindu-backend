@@ -39,20 +39,20 @@ def get_dashboard(
             product_sales[item.product_id] = 0
         product_sales[item.product_id] += item.quantity
 
-    
-    top_products = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:5]
-    best_product = max(product_sales, key=product_sales.get) if product_sales else None
-    worst_product = min(product_sales, key=product_sales.get) if product_sales else None
-    avg_sale_value = total_revenue / total_quantity if total_quantity else 0.0
-    profit_margin = (profit / total_revenue * 100) if total_revenue else 0.0
-
     # Total expenses – also filter by session
     expenses_query = db.query(func.sum(Expense.amount))
     if session_id:
         expenses_query = expenses_query.filter(Expense.session_id == session_id)
     total_expenses = expenses_query.scalar() or 0.0
-    
-    profit = total_revenue - total_cost-total_expenses
+
+    # Calculate profit AFTER total_expenses is defined
+    profit = total_revenue - total_cost - total_expenses
+
+    top_products = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:5]
+    best_product = max(product_sales, key=product_sales.get) if product_sales else None
+    worst_product = min(product_sales, key=product_sales.get) if product_sales else None
+    avg_sale_value = total_revenue / total_quantity if total_quantity else 0.0
+    profit_margin = (profit / total_revenue * 100) if total_revenue else 0.0
 
     return {
         "session_id": session_id,
