@@ -14,7 +14,6 @@ from app.core.security import (
 from pydantic import BaseModel
 from typing import Optional
 import uuid
-from app.api.dependencies import get_current_shop_id
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -42,8 +41,7 @@ class RegisterRequest(BaseModel):
 # ------------------------------------------------------------------
 def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
-    shop_id: str = Depends(get_current_shop_id)
+    db: Session = Depends(get_db)
 ) -> User:
     try:
         payload = decode_token(token)
@@ -59,18 +57,13 @@ def get_current_user(
     return user
 
 # ------------------------------------------------------------------
-# Dependency: get current shop ID (depends on current user)
-# ------------------------------------------------------------------
-def get_current_shop_id(current_user: User = Depends(get_current_user)) -> str:
-    return current_user.shop_id
-
-# ------------------------------------------------------------------
 # Auth endpoints
 # ------------------------------------------------------------------
 @router.post("/register", response_model=Token)
-def register(data: RegisterRequest, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
-    if len(data.password.encode('utf-8'))> 72:
+def register(data: RegisterRequest, db: Session = Depends(get_db)):
+    if len(data.password.encode('utf-8')) > 72:
         raise HTTPException(status_code=400, detail="Password too long (max 72 bytes)")
+
     existing = db.query(User).filter(User.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
