@@ -3,14 +3,16 @@
 import uuid
 from sqlalchemy import Column, String, Float, ForeignKey, Boolean
 from app.db.session import Base
+from sqlalchemy.orm import relationship
 
 
 class Product(Base):
     """Product model representing items for sale."""
     __tablename__ = "products"
-
+    
+    shop_id = Column(String, ForeignKey("shops.id"), nullable=False)
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-
+    
     name = Column(String, nullable=False)
     category = Column(String)
 
@@ -27,3 +29,5 @@ class Product(Base):
     archived = Column(Boolean, default=False)
 
     low_stock_threshold = Column(Float, default=5)
+    shop = relationship("Shop", back_populates="products")
+    sale_items = relationship("SaleItem", back_populates="product")

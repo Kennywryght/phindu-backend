@@ -13,18 +13,19 @@ from app.db.models.session import Session as SessionModel  # <-- Added import
 from app.db.session import get_db
 from app.schemas.sale import SaleCreate, SaleResponse, BulkSaleCreate
 from app.utils.conversion import to_kg
+from app.api.dependencies import get_current_shop_id
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
 
 @router.post("/", response_model=SaleResponse)
-def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
+def create_sale(sale: SaleCreate, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Create a new sale with items, update stock, and calculate totals."""
 
     new_sale = Sale(id=str(uuid.uuid4()), total_amount=0)
 
     # Get active session and link if present
-    active_session = db.query(SessionModel).filter(SessionModel.is_active == True).first()
+    active_session = db.query(SessionModel).filter(SessionModel.is_active == True, SessionModel.shop_id == shop_id).first()
     if active_session:
         new_sale.session_id = active_session.id
 
@@ -33,7 +34,7 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
     total_amount = 0
 
     for item in sale.items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
+        product = db.query(Product).filter(Product.id == item.product_id, Product.shop_id == shop_id).first()
 
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
@@ -62,7 +63,7 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
             if product.stock_qty <= 0:
                 batch = (
                     db.query(StockBatch)
-                    .filter(StockBatch.product_id == product.id)
+                    .filter(StockBatch.product_id == product.id, StockBatch.shop_id == shop_id)
                     .order_by(StockBatch.date_added.desc())
                     .first()
                 )
@@ -89,12 +90,12 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/bulk")
-def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db)):
+def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Quick bulk sales for POS (no detailed breakdown)."""
-    active_session = db.query(SessionModel).filter(SessionModel.is_active == True).first()
+    active_session = db.query(SessionModel).filter(SessionModel.is_active == True, SessionModel.shop_id == shop_id).first()
 
     for item in data.items:
-        product = db.query(Product).filter(Product.id == item.id).first()
+        product = db.query(Product).filter(Product.id == item.id, Product.shop_id == shop_id).first()
         if not product:
             continue
         if product.stock_qty < item.qty:
@@ -130,3 +131,27 @@ def get_sales(db: Session = Depends(get_db)):
             "products": product_names
         })
     return result
+
+@router.post("/{sale_id}/void")
+def void_sale(sale_id: str, reason: str = None, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+    sale = db.query(Sale).filter(Sale.id == sale_id, Sale.shop_id == shop_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+    if sale.is_voided:
+        raise HTTPException(status_code=400, detail="Sale already voided")
+
+    # Restore stock for each item
+    items = db.query(SaleItem).filter(SaleItem.sale_id == sale_id, SaleItem.shop_id == shop_id).all()
+    for item in items:
+        product = db.query(Product).filter(Product.id == item.product_id, Product.shop_id == shop_id).first()
+        if product:
+            if product.type == "bulk":
+                # For bulk products, quantity was already converted to kg
+                product.stock_qty += item.quantity
+            else:
+                product.stock_qty += item.quantity
+
+    sale.is_voided = True
+    sale.void_reason = reason
+    db.commit()
+    return {"message": "Sale voided successfully"}

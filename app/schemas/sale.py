@@ -8,6 +8,9 @@ class SaleItemCreate(BaseModel):
 
 class SaleCreate(BaseModel):
     items: List[SaleItemCreate]
+    customer_id: Optional[str] = None
+    payment_status: str = "paid"
+    amount_paid: float = 0.0
 
 class SaleResponse(BaseModel):
     id: str
@@ -22,3 +25,6 @@ class BulkSaleItem(BaseModel):
 
 class BulkSaleCreate(BaseModel):
     items: List[BulkSaleItem]
+    customer_id: Optional[str] = None
+    payment_status: str = "paid"
+    amount_paid: float = 0.0

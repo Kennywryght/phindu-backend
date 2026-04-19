@@ -11,9 +11,21 @@ from app.api.routes import expenses
 from app.api.routes import alerts
 from app.api.routes import sessions
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.routes import customers
+from app.api.routes import auth
+from fastapi.security import OAuth2PasswordBearer
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-app = FastAPI()
+app = FastAPI(
+    title="PHINDU API",
+    swagger_ui_init_oauth={
+        "clientId": "swagger-ui",
+        "clientSecret": "",
+        "appName": "PHINDU API",
+        "usePkceWithAuthorizationCodeGrant": False,
+    },
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -34,6 +46,8 @@ app.include_router(sales)             # sales is the router object directly
 app.include_router(expenses.router)
 app.include_router(alerts.router)
 app.include_router(sessions.router)
+app.include_router(customers.router)
+app.include_router(auth.router)
 
 # Create tables
 Base.metadata.create_all(bind=engine)

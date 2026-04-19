@@ -11,6 +11,7 @@ from app.db.models.sale import SaleItem
 from app.db.models.stock import StockBatch
 from app.db.session import SessionLocal
 from app.schemas.product import ProductCreate, ProductOut, ProductUpdate
+from app.api.dependencies import get_current_shop_id
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -25,7 +26,7 @@ def get_db():
 
 
 @router.post("/", response_model=ProductOut)
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+def create_product(product: ProductCreate, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     new_product = Product(
         name=product.name,
         category=product.category,
@@ -55,9 +56,10 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[ProductOut])
 def get_products(
     include_deleted: bool = False,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    shop_id: str = Depends(get_current_shop_id)
     ):
-    query = db.query(Product)
+    query = db.query(Product).filter(Product.shop_id == shop_id)
     if not include_deleted:
         query = query.filter(Product.is_deleted == False)
     return query.all()
@@ -65,7 +67,7 @@ def get_products(
 
 
 @router.delete("/{product_id}")
-def delete_product(product_id: str, db: Session = Depends(get_db)):
+def delete_product(product_id: str, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Delete a product, soft delete if it has sales, hard delete otherwise."""
     product = db.query(Product).filter(Product.id == product_id).first()
 
@@ -88,10 +90,11 @@ def delete_product(product_id: str, db: Session = Depends(get_db)):
 def update_product(
     product_id: str,
     product_update: ProductUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    shop_id: str = Depends(get_current_shop_id)
 ):
     """Update product fields and handle stock changes."""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -129,9 +132,9 @@ def update_product(
 
 
 @router.put("/restore/{product_id}")
-def restore_product(product_id: str, db: Session = Depends(get_db)):
+def restore_product(product_id: str, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Restore a soft-deleted product."""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     product.is_deleted = False
@@ -140,9 +143,9 @@ def restore_product(product_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/archive/{product_id}")
-def archive_product(product_id: str, db: Session = Depends(get_db)):
+def archive_product(product_id: str, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Archive a product so it is hidden from normal listings."""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     product.archived = True
@@ -151,8 +154,8 @@ def archive_product(product_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/unarchive/{product_id}")
-def unarchive_product(product_id: str, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+def unarchive_product(product_id: str, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     product.archived = False

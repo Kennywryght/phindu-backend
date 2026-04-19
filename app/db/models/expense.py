@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Boolean
 from app.db.session import Base
 import uuid
 from datetime import datetime
+from sqlalchemy.orm import relationship
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -12,3 +13,5 @@ class Expense(Base):
     category = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     session_id = Column(String, ForeignKey("sessions.id"), nullable=True)
+    shop = relationship("Shop", back_populates="expenses")
+    shop_id = Column(String, ForeignKey("shops.id"), nullable=False) 

@@ -2,12 +2,14 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from sqlalchemy import extract
 
 from app.db.session import get_db
 from app.db.models.stock import StockBatch
 from app.db.models.product import Product
 from app.db.models.sale import Sale
+from app.api.dependencies import get_current_shop_id
+from app.db.models.sale import SaleItem
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -141,3 +143,39 @@ def profit_margins(db: Session = Depends(get_db)):
     # Sort by margin percent descending
     margins.sort(key=lambda x: x["margin_percent"], reverse=True)
     return margins
+@router.get("/peak-hours")
+def peak_hours(db: Session = Depends(get_db)):
+    """Return sales count grouped by hour of day (0-23)."""
+    results = (
+        db.query(
+            extract('hour', Sale.created_at).label('hour'),
+            func.count(Sale.id).label('count')
+        )
+        .group_by('hour')
+        .order_by('hour')
+        .all()
+    )
+
+    hours = [0] * 24
+    for r in results:
+        hours[int(r.hour)] = r.count
+
+    return {"hours": hours}
+
+@router.get("/expense-breakdown")
+def expense_breakdown(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+    """Sum expenses grouped by category."""
+    results = (
+        db.query(
+            Expense.category,
+            func.sum(Expense.amount).label('total')
+        )
+        .filter(Expense.shop_id == shop_id)
+        .group_by(Expense.category)
+        .all()
+    )
+
+    return [
+        {"category": r.category or "Uncategorized", "total": float(r.total)}
+        for r in results
+    ]

@@ -5,13 +5,16 @@ from app.db.session import get_db
 from app.db.models.sale import Sale, SaleItem
 from app.db.models.expense import Expense
 from app.db.models.session import Session as SessionModel
+from app.api.dependencies import get_current_shop_id
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/")
 def get_dashboard(
     session_id: str = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    shop_id: str = Depends(get_current_shop_id)
+
 ):
     # If no session_id provided, try to use the currently active session
     if not session_id:
