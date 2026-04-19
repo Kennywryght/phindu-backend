@@ -22,7 +22,7 @@ router = APIRouter(prefix="/sales", tags=["Sales"])
 def create_sale(sale: SaleCreate, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Create a new sale with items, update stock, and calculate totals."""
 
-    new_sale = Sale(id=str(uuid.uuid4()), total_amount=0)
+    new_sale = Sale(id=str(uuid.uuid4()), total_amount=0, shop_id=shop_id)  # <-- Set shop_id for the sale
 
     # Get active session and link if present
     active_session = db.query(SessionModel).filter(SessionModel.is_active == True, SessionModel.shop_id == shop_id).first()
@@ -102,9 +102,11 @@ def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db), shop_id: str
             raise HTTPException(status_code=400, detail=f"Not enough stock for {product.name}")
 
         sale = Sale(
+            
             id=str(uuid.uuid4()),
             total_amount=product.selling_price * item.qty,
-            session_id=active_session.id if active_session else None  # <-- Set session_id
+            session_id=active_session.id if active_session else None,  # <-- Set session_id
+            shop_id=shop_id  # <-- Set shop_id for the sale
         )
         db.add(sale)
         product.stock_qty -= item.qty

@@ -26,8 +26,11 @@ def get_db():
 
 
 @router.post("/", response_model=ProductOut)
-def create_product(product: ProductCreate, db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+def create_product(product: ProductCreate,
+                   db: Session = Depends(get_db), 
+                   shop_id: str = Depends(get_current_shop_id)):
     new_product = Product(
+        shop_id=shop_id,
         name=product.name,
         category=product.category,
         type=product.type,
