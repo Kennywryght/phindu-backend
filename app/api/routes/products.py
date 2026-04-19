@@ -46,6 +46,7 @@ def create_product(product: ProductCreate,
     db.refresh(new_product)
 
     batch = StockBatch(
+        shop_id=shop_id,
         product_id=new_product.id,
         quantity_added=new_product.stock_qty,
         date_added=datetime.utcnow()
