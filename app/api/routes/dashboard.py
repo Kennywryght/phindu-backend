@@ -23,7 +23,7 @@ def get_dashboard(
             session_id = active_session.id
 
     # Base query for SaleItem – optionally filter by session
-    sale_items_query = db.query(SaleItem).join(Sale)
+    sale_items_query = db.query(SaleItem).join(Sale).filter(Sale.shop_id == shop_id)
     if session_id:
         sale_items_query = sale_items_query.filter(Sale.session_id == session_id)
 
@@ -43,7 +43,7 @@ def get_dashboard(
         product_sales[item.product_id] += item.quantity
 
     # Total expenses – also filter by session
-    expenses_query = db.query(func.sum(Expense.amount))
+    expenses_query = db.query(func.sum(Expense.amount), label="total_expenses").filter(Expense.shop_id == shop_id)
     if session_id:
         expenses_query = expenses_query.filter(Expense.session_id == session_id)
     total_expenses = expenses_query.scalar() or 0.0

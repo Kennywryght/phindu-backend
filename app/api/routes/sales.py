@@ -114,8 +114,8 @@ def bulk_sales(data: BulkSaleCreate, db: Session = Depends(get_db), shop_id: str
 
 
 @router.get("/")
-def get_sales(db: Session = Depends(get_db)):
-    sales = db.query(Sale).order_by(Sale.created_at.desc()).all()
+def get_sales(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+    sales = db.query(Sale).filter(Sale.shop_id == shop_id).order_by(Sale.created_at.desc()).all()
     result = []
     for sale in sales:
         items = db.query(SaleItem).filter(SaleItem.sale_id == sale.id).all()

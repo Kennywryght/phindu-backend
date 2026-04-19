@@ -15,8 +15,8 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
 @router.get("/sell-speed")
-def get_sell_speed(db: Session = Depends(get_db)):
-    batches = db.query(StockBatch).all()
+def get_sell_speed(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+    batches = db.query(StockBatch).filter(StockBatch.shop_id == shop_id).all()
     results = []
 
     for batch in batches:
@@ -32,9 +32,9 @@ def get_sell_speed(db: Session = Depends(get_db)):
 
 
 @router.get("/insights")
-def insights(db: Session = Depends(get_db)):
-    total_products = db.query(Product).count()
-    total_sales = db.query(Sale).count()
+def insights(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
+    total_products = db.query(Product).filter(Product.shop_id == shop_id).count()
+    total_sales = db.query(Sale).filter(Sale.shop_id == shop_id).count()
 
     return {
         "message": "Insights ready",
@@ -44,7 +44,7 @@ def insights(db: Session = Depends(get_db)):
 
 
 @router.get("/revenue-trend")
-def revenue_trend(db: Session = Depends(get_db)):
+def revenue_trend(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Return total revenue for each of the last 6 days."""
     today = datetime.utcnow().date()
     six_days_ago = today - timedelta(days=5)
@@ -69,7 +69,7 @@ def revenue_trend(db: Session = Depends(get_db)):
 @router.get("/top-products")
 def top_products(
     period: str = "day",  # "day", "week", "month"
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)
 ):
     """Return top 10 products by quantity sold in the given period."""
     now = datetime.utcnow()
@@ -92,7 +92,7 @@ def top_products(
         )
         .join(SaleItem, SaleItem.product_id == Product.id)
         .join(Sale, Sale.id == SaleItem.sale_id)
-        .filter(Sale.created_at >= start_date)
+        .filter(Sale.created_at >= start_date, Sale.created_at <= now)
         .group_by(Product.id, Product.name)
         .order_by(func.sum(SaleItem.quantity).desc())
         .limit(10)
@@ -109,7 +109,7 @@ def top_products(
     ]
     
 @router.get("/profit-margins")
-def profit_margins(db: Session = Depends(get_db)):
+def profit_margins(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Return profit margin (profit / revenue) for each product based on all sales."""
     
     # Subquery to get total revenue and total cost per product
@@ -121,6 +121,8 @@ def profit_margins(db: Session = Depends(get_db)):
             func.sum(SaleItem.quantity * SaleItem.cost_price).label("cost")
         )
         .join(SaleItem, SaleItem.product_id == Product.id)
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .filter(Sale.shop_id == shop_id)    
         .group_by(Product.id, Product.name)
         .all()
     )
@@ -144,13 +146,14 @@ def profit_margins(db: Session = Depends(get_db)):
     margins.sort(key=lambda x: x["margin_percent"], reverse=True)
     return margins
 @router.get("/peak-hours")
-def peak_hours(db: Session = Depends(get_db)):
+def peak_hours(db: Session = Depends(get_db), shop_id: str = Depends(get_current_shop_id)):
     """Return sales count grouped by hour of day (0-23)."""
     results = (
         db.query(
             extract('hour', Sale.created_at).label('hour'),
             func.count(Sale.id).label('count')
         )
+        .filter(Sale.shop_id == shop_id)
         .group_by('hour')
         .order_by('hour')
         .all()
