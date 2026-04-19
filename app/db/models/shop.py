@@ -20,3 +20,4 @@ class Shop(Base):
     customers = relationship("Customer", back_populates="shop")
     sessions = relationship("Session", back_populates="shop")
     sale_items = relationship("SaleItem", back_populates="shop")
+    stock_batches = relationship("StockBatch", back_populates="shop")

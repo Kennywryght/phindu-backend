@@ -31,3 +31,4 @@ class Product(Base):
     low_stock_threshold = Column(Float, default=5)
     shop = relationship("Shop", back_populates="products")
     sale_items = relationship("SaleItem", back_populates="product")
+    stock_batches = relationship("StockBatch", back_populates="product")
